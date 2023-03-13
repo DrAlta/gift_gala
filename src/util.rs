@@ -1,20 +1,16 @@
 //utility functions
 pub type Date = i32;
 
-pub struct Range {
-    pub min: f32,
-    pub max: f32
+pub struct Range<T: PartialOrd> {
+    pub min: T,
+    pub max: T
 }
-impl Range {
-    fn new(min:f32, max:f32) -> Self {
+impl<T: PartialOrd> Range<T> {
+    fn new(min:T, max:T) -> Self {
         Range{min, max}
     }
 }
 
-
-pub fn position_in_range(value:f32, min:f32, max:f32) -> f32 {
-    (value - min) / (max - min)
-}
 
 
 #[allow(dead_code)]
@@ -25,10 +21,11 @@ pub fn position_in_range_clamped(value:f32, min:f32, max:f32) -> f32 {
     value
 }
 
-
-pub fn range(selfie:&Vec<f32>)-> Range {
+use super::market::Script;
+pub fn range<T: Script>(selfie:&Vec<T>)-> Range<T> {
+    let zero = &T::ZERO;
     let mut iter = selfie.into_iter();
-    let mut min = iter.next().unwrap_or(&0_f32);
+    let mut min = iter.next().unwrap_or(zero);
     let mut max = min;
     for x in iter {
         if x < min {

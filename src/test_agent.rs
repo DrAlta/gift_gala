@@ -1,16 +1,18 @@
 use std::collections::HashMap;
-use super::util::{position_in_range, range, Range};
-use super::market::{Commodity, Market, MarketAgentBasics};
-pub struct TestAgent<C: Commodity> {
+use super::util::{range, Range};
+use super::market::{Commodity, Market, MarketAgentBasics, Script};
+use super::eerg::EERGAgentBasics;
+pub struct TestAgent<C: Commodity, S: Script> {
     //_observedTradingRange is now trading_observations
     inventory: HashMap<C, f32>,
     ideal_inventory: HashMap<C, f32>,
-    trading_observations: HashMap<C, Vec<f32>>,
+    trading_observations: HashMap<C, Vec<S>>,
     lookback: i32,
+    price_beliefs:HashMap<C, S>,
 }
-impl<C: Commodity> TestAgent<C> {
+impl<C: Commodity, S: Script> TestAgent<C, S> {
     pub fn def() -> Self {
-        TestAgent { inventory: HashMap::new(), ideal_inventory: HashMap::new(), trading_observations: HashMap::new(), lookback: 15 }
+        TestAgent { inventory: HashMap::new(), ideal_inventory: HashMap::new(), trading_observations: HashMap::new(), lookback: 15, price_beliefs: HashMap::new() }
     }
     pub fn get_ideal_inventory(&self, good: &C) -> f32 {
         *self.ideal_inventory.get(good).unwrap_or(&0_f32)
@@ -19,27 +21,30 @@ impl<C: Commodity> TestAgent<C> {
 
     pub fn get_inventory(&self, good: &C) -> f32 {
         *self.inventory.get(good).unwrap_or(&0_f32)
+    }
+    fn get_believed_price(&self, commodity: &C) -> S {
+        *self.price_beliefs.get(commodity). unwrap_or(&S::ZERO)
     }    
 }
 
 ///EERG functions
-impl<C: Commodity> TestAgent<C> {
-    pub fn better_determine_sale_quantity<M: Market<C>>(&self, bazaar:&M, commodity_id: &C) -> i32 {
+impl<C: Commodity, S: Script> TestAgent<C, S> {
+    pub fn better_determine_sale_quantity<M: Market<C, S>>(&self, bazaar:&M, commodity_id: &C) -> i32 {
         let mean = bazaar.get_average_historical_value(commodity_id, self.lookback);
         let Some(trading_range) = self.observe_trading_range(commodity_id) else {
             return self.excess_inventory(commodity_id) as i32
         };
-        let favorability = position_in_range(mean, trading_range.min, trading_range.max);
+        let favorability = mean.position_in_range(&trading_range.min, &trading_range.max);
         //position_in_range: high means price is at a high point
     
         let amount_to_sell = (favorability * self.excess_inventory(commodity_id)) as i32;
         amount_to_sell.max(1)
     }
     //returns amount_to_buy
-    pub fn better_determine_purchase_quantity<M: Market<C>>(&self, bazaar:&M, commodity:&C) -> i32 {
+    pub fn better_determine_purchase_quantity<M: Market<C, S>>(&self, bazaar:&M, commodity:&C) -> i32 {
 		let mean = bazaar.get_average_historical_value(commodity,self.lookback);
 		let  Some(trading_range) = self.observe_trading_range(commodity) else { return 0 };
-		let favorability = position_in_range(mean, trading_range.min, trading_range.max);
+		let favorability = mean.position_in_range(&trading_range.min, &trading_range.max);
 
 		//do 1 - favorability to see how close we are to the low 
         let amount_to_buy = ((1_f32 - favorability) * self.max_inventory_capacity(commodity)) as i32;
@@ -48,7 +53,7 @@ impl<C: Commodity> TestAgent<C> {
 }
 
 
-impl<C: Commodity> MarketAgentBasics<C> for TestAgent<C> {
+impl<C: Commodity, S: Script> MarketAgentBasics<C, S> for TestAgent<C, S> {
     fn excess_inventory(&self, good: &C) -> f32 {
         (self.get_inventory(good) - self.get_ideal_inventory(good)).max(0_f32)
     }
@@ -59,9 +64,16 @@ impl<C: Commodity> MarketAgentBasics<C> for TestAgent<C> {
     fn max_inventory_capacity(&self, good:&C) -> f32 {
         (self.get_ideal_inventory(good) - self.get_inventory(good)).max(0_f32)
 	}
-    fn observe_trading_range(&self, good:&C) -> Option<Range> {
+    fn observe_trading_range(&self, good:&C) -> Option<Range<S>> {
         
         Some(range(self.trading_observations.get(good)?))
     }
 
+}
+
+
+impl<C: Commodity, S: Script> EERGAgentBasics<C, S> for TestAgent<C, S> {
+    fn price_of(&self, commodity: &C) -> S {
+        self.get_believed_price(commodity)
+    }
 }
