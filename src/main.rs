@@ -7,7 +7,7 @@ mod history_log;
 use test_agent::TestAgent;
 use eerg::EERGAgent as nope;
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 #[allow(dead_code)]
 pub enum MyCommodity {
     Stuff,
@@ -31,6 +31,12 @@ fn main() {
     let agent = TestAgent::<MyCommodity, f32>::def();
     println!("{:?}", agent.determine_sale_quantity(&bazaar, &MyCommodity::Things));
     println!("{:?}", agent.determine_purchase_quantity(&bazaar, &MyCommodity::Things));
+    if let Some(thing) = agent.create_bid(&bazaar, &MyCommodity::Things, 1) {
+        println!("bid: {:?}", thing.strip());
+    }
+    if let Some(thing) = agent.create_ask(&bazaar, &MyCommodity::Things, 1) {
+        println!("ask: {:?}", thing.strip());
+    }
 
     println!("{:?}", agent.better_determine_sale_quantity(&bazaar, &MyCommodity::Things));
     println!("{:?}", agent.better_determine_purchase_quantity(&bazaar, &MyCommodity::Things));
