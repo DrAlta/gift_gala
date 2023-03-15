@@ -38,6 +38,9 @@ struct Offerette<S: Script> {
 
 //market sim
 impl<C: Commodity, S: Script, A: EERGAgent<C, S> + MarketAgentBasics<C, S>, M: Market<C, S>> Bazaar<C, S, A, M> {
+    pub fn get_traded_goods(&self) ->  Vec<C> {
+        self.traded_goods.clone()
+    }
 
     fn produce(&mut self) {
 
@@ -50,9 +53,9 @@ impl<C: Commodity, S: Script, A: EERGAgent<C, S> + MarketAgentBasics<C, S>, M: M
     }
 
     pub fn sim_market_step (&mut self, date: Date) {
-        let mut askettes = Vec::<Offerette<S>>::new();
-        let mut bidettes = Vec::<Offerette<S>>::new();
-        for good in &self.traded_goods {
+        for good in &self.get_traded_goods() {
+            let mut askettes = Vec::<Offerette<S>>::new();
+            let mut bidettes = Vec::<Offerette<S>>::new();
             for i in 0..self.trading_agents.len() {
                 if let Some(Ask{good:_, price, quantity})=self.trading_agents[i].create_ask(&self.market, &good, 10){
                     askettes.push(Offerette { agent_id: i, quantity, price});
@@ -62,81 +65,88 @@ impl<C: Commodity, S: Script, A: EERGAgent<C, S> + MarketAgentBasics<C, S>, M: M
                 }
             }//end gathering bids and asks
 
-            //We are going to be poping things off the end so these need to be in the oposite order from the pap
-
-            bidettes.sort_unstable_by(
-                |a, b| 
-                    a.price.partial_cmp(&b.price).unwrap_or(std::cmp::Ordering::Equal)
-            );
-            askettes.sort_unstable_by(
-                |a, b|
-                    b.price.partial_cmp(&a.price).unwrap_or(std::cmp::Ordering::Equal)
-            );
-            let mut pop_askettes = false;
-            let mut pop_bidettes = false;
-
-
-            let mut max_unfulfilled_bid: Option<S> = None;
-            let mut max_unfulfilled_ask: Option<S> = None;
-
-            let bidettes_size = bidettes.len() - 1;
-            let askettes_size = askettes.len() - 1;
-
-            match (bidettes.get_mut(bidettes_size), askettes.get_mut(askettes_size)) {
-                (Some(buyer), Some(seller)) => {
-                    let quantity_traded = seller.quantity.min(buyer.quantity);
-                    let clearing_price = seller.price.average(&buyer.price);
-
-                    for i in 0..(quantity_traded ) {
-                        if let Ok(_) = self.trading_agents
-                            .get_mut(buyer.agent_id)
-                            .expect("buyer agent not found")
-                            .withdrawl(&clearing_price) {
-                                self.trading_agents
-                                    .get_mut(seller.agent_id)
-                                    .expect("seller agent not found")
-                                    .deposit(&clearing_price)
-                        } else {
-                            if let Ok(_) = self.trading_agents
-                                .get_mut(seller.agent_id)
-                                .expect("seller agent not found")
-                                .relinquish_good(good, &i) {
-                                    seller.quantity -= quantity_traded;
-                                    if seller.quantity >= 0 {
-                                        pop_askettes = true;
-                                    }
-                                    buyer.quantity -= quantity_traded;
-                                    if buyer.quantity >= 0 {
-                                        pop_bidettes = true;
-                                    }
-                                    self.trading_agents
-                                        .get_mut(buyer.agent_id)
-                                        .expect("buyer agent not found")
-                                        .receive_good(good, &i)
-                            }
-                            break
-                        }
-                    }
-                },
-                (Some(Offerette{price, quantity:_, agent_id: _}), None) => max_unfulfilled_bid = Self::max_option(max_unfulfilled_bid, Some(*price)),
-                (None, Some(Offerette{price, quantity:_, agent_id: _})) => max_unfulfilled_ask = Self::max_option(max_unfulfilled_ask, Some(*price)),
-                _ => ()
-            }
-
-            if pop_askettes {
-                askettes.pop();
-            }
-            if pop_bidettes {
-                bidettes.pop();
-            }
-
-            if let Some(price) = max_unfulfilled_ask {
-                self.market.push_max_unfulfilled_asks_history(*good, price, date);
-            }
-            if let Some(price) = max_unfulfilled_bid {
-                self.market.push_max_unfulfilled_bids_history(*good, price, date);
-            }
+            Self::resolve_offers(&mut self.market, &mut self.trading_agents, good, askettes, bidettes, &date);
         } // end for good
     }   
+
+    fn resolve_offers(market: &mut M, trading_agents:&mut Vec<A>, good: &C, mut askettes:Vec::<Offerette<S>>, mut bidettes:Vec::<Offerette<S>>, date: &Date) {
+                    //We are going to be poping things off the end so these need to be in the oposite order from the pap
+
+                    bidettes.sort_unstable_by(
+                        |a, b| 
+                            a.price.partial_cmp(&b.price).unwrap_or(std::cmp::Ordering::Equal)
+                    );
+                    askettes.sort_unstable_by(
+                        |a, b|
+                            b.price.partial_cmp(&a.price).unwrap_or(std::cmp::Ordering::Equal)
+                    );
+                    let mut pop_askettes = false;
+                    let mut pop_bidettes = false;
+        
+        
+                    let mut max_unfulfilled_bid: Option<S> = None;
+                    let mut max_unfulfilled_ask: Option<S> = None;
+        
+                    let bidettes_size = bidettes.len() - 1;
+                    let askettes_size = askettes.len() - 1;
+        
+                    match (bidettes.get_mut(bidettes_size), askettes.get_mut(askettes_size)) {
+                        (Some(buyer), Some(seller)) => {
+                            let quantity_traded = seller.quantity.min(buyer.quantity);
+                            let clearing_price = seller.price.average(&buyer.price);
+        
+                            for i in 0..(quantity_traded ) {
+                                if let Ok(_) = trading_agents
+                                    .get_mut(buyer.agent_id)
+                                    .expect("buyer agent not found")
+                                    .withdrawl(&clearing_price) {
+                                        trading_agents
+                                            .get_mut(seller.agent_id)
+                                            .expect("seller agent not found")
+                                            .deposit(&clearing_price)
+                                } else {
+                                    let seller_agent = trading_agents
+                                    .get_mut(seller.agent_id)
+                                    .expect("seller agent not found");
+                                    if let Ok(_) = seller_agent
+                                        .relinquish_good(good, &i) {
+                                            seller.quantity -= quantity_traded;
+                                            if seller.quantity >= 0 {
+                                                pop_askettes = true;
+                                            }
+                                            buyer.quantity -= quantity_traded;
+                                            if buyer.quantity >= 0 {
+                                                pop_bidettes = true;
+                                            }
+                                            
+                                            let buyer_agent = trading_agents
+                                                .get_mut(buyer.agent_id)
+                                                .expect("buyer agent not found");
+
+                                                buyer_agent.receive_good(good, &i)
+                                    }
+                                    break
+                                }
+                            }
+                        },
+                        (Some(Offerette{price, quantity:_, agent_id: _}), None) => max_unfulfilled_bid = Self::max_option(max_unfulfilled_bid, Some(*price)),
+                        (None, Some(Offerette{price, quantity:_, agent_id: _})) => max_unfulfilled_ask = Self::max_option(max_unfulfilled_ask, Some(*price)),
+                        _ => ()
+                    }
+        
+                    if pop_askettes {
+                        askettes.pop();
+                    }
+                    if pop_bidettes {
+                        bidettes.pop();
+                    }
+        
+                    if let Some(price) = max_unfulfilled_ask {
+                        market.push_max_unfulfilled_asks_history(*good, price, *date);
+                    }
+                    if let Some(price) = max_unfulfilled_bid {
+                        market.push_max_unfulfilled_bids_history(*good, price, *date);
+                    }
+    }
 }
 
