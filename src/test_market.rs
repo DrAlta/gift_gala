@@ -11,14 +11,17 @@ impl<C: Commodity, S: Script> TestMarket<C, S> {
    pub fn def()-> Self {
         TestMarket { price_history: HistoryLog::def(), max_unfulfilled_bids_history: HistoryLog::def() }
     }
-    pub fn push_price_history(&mut self, good: C, price: S, date: Date) {
-        self.price_history.push(good, price, date)
-    }
-    pub fn push_max_unfulfilled_bids_history(&mut self, good: C, price: S, date: Date) {
-        self.max_unfulfilled_bids_history.push(good, price, date)
-    }
 }
 impl<C: Commodity, S: Script> Market<C, S> for TestMarket<C, S> {
+    fn push_price_history(&mut self, good: C, price: S, date: Date) {
+        self.price_history.push(good, price, date)
+    }
+    fn push_max_unfulfilled_asks_history(&mut self, good: C, price: S, date: Date) {
+        self.max_unfulfilled_bids_history.push(good, price, date)
+    }
+    fn push_max_unfulfilled_bids_history(&mut self, good: C, price: S, date: Date) {
+        self.max_unfulfilled_bids_history.push(good, price, date)
+    }
 
 
     fn get_average_historical_price(&self, good: &C, depth: i32) -> Option<S> {
@@ -48,3 +51,4 @@ impl<C: Commodity, S: Script> Market<C, S> for TestMarket<C, S> {
         total / (range as f32)
     }
 }
+

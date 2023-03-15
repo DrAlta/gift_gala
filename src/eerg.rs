@@ -44,7 +44,7 @@ impl<T: MarketAgentBasics<C, S>+ EERGAgentBasics<C, S>, C: Commodity, S: Script>
         let favorability = mean.position_in_range(&trading_range.min, &trading_range.max);
         //position_in_range: high means price is at a high point
     
-        let amount_to_sell = (favorability * self.excess_inventory(commodity_id)) as i32;
+        let amount_to_sell = (favorability * self.excess_inventory(commodity_id) as f32) as i32;
         amount_to_sell.max(1)
     }
     //returns amount_to_buy
@@ -58,7 +58,7 @@ impl<T: MarketAgentBasics<C, S>+ EERGAgentBasics<C, S>, C: Commodity, S: Script>
 		let favorability = mean.position_in_range(&trading_range.min, &trading_range.max);
 
 		//do 1 - favorability to see how close we are to the low 
-        let amount_to_buy = ((1_f32 - favorability) * self.max_inventory_capacity(commodity)) as i32;
+        let amount_to_buy = ((1_f32 - favorability) * self.max_inventory_capacity(commodity) as f32) as i32;
 		amount_to_buy.max(1)
 	}
 
