@@ -1,15 +1,27 @@
 use super::market::{Ask, Bid, Commodity, Market, MarketAgentBasics, Script};
 
+use super::util::Range;
+
 pub trait EERGAgentBasics<C: Commodity, S: Script> {
+    fn get_price_beliefs(&mut self, commodity:&C) -> Option<Range<S>>;
     fn price_of(&self, commodity: &C) -> S ;
-}
+    fn set_price_beliefs(&mut self, commodity:&C, belief: Range<S>);
+    }
 pub trait EERGAgent<C: Commodity, S: Script> {
+    fn get_average_historical_price<M: Market<C, S>>(&self, bazaar:&M, commodity_id: &C) -> Option<S>;
+
     fn determine_purchase_quantity<M: Market<C, S>>(&self, bazaar:&M, commodity: &C) -> i32;
     fn determine_sale_quantity<M: Market<C, S>>(&self, bazaar:&M, commodity_id: &C) -> i32;
     fn create_ask<M: Market<C, S>>(&self, bazaar:&M, commodity:&C, limit: i32) -> Option<Ask<C, S>>;
     fn create_bid<M: Market<C, S>>(&self, bazaar:&M, good: &C, limit:i32) -> Option<Bid<C, S>>;
+    fn update_price_beliefs(&mut self, percent_of_order_solf: &f32, commodity:&C, sold_for: &S, mean_price:S);
 }
 impl<T: MarketAgentBasics<C, S>+ EERGAgentBasics<C, S>, C: Commodity, S: Script> EERGAgent<C, S> for T {
+    #[allow(dead_code)]
+    fn get_average_historical_price<M: Market<C, S>>(&self, bazaar:&M, commodity_id: &C) -> Option<S>{
+        bazaar.get_average_historical_price(commodity_id, self.get_lookback())
+    }
+
     fn create_ask<M: Market<C, S>>(&self, bazaar:&M, commodity:&C, limit: i32) -> Option<Ask<C, S>> {
 		let ask_price = self.price_of(commodity);
 		let ideal = self.determine_sale_quantity(bazaar, commodity);
@@ -61,6 +73,13 @@ impl<T: MarketAgentBasics<C, S>+ EERGAgentBasics<C, S>, C: Commodity, S: Script>
         let amount_to_buy = ((1_f32 - favorability) * self.max_inventory_capacity(commodity) as f32) as i32;
 		amount_to_buy.max(1)
 	}
+    fn update_price_beliefs(&mut self, percent_of_order_sold: &f32, commodity:&C, sold_for: &S, mean_price:S) {
+        if percent_of_order_sold < &0.5 {
+            let mut belief = self.get_price_beliefs(commodity).unwrap_or(Range::new(S::ONE, S::ONE));
+            belief.max = belief.max / 0.1;
+            self.set_price_beliefs(commodity, belief)
+        }
+    }
 
 }
 

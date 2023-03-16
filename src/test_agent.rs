@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use super::util::{range, Range};
 use super::market::{Commodity, Market, MarketAgentBasics, Script};
 use super::eerg::EERGAgentBasics;
+
+
 pub struct TestAgent<C: Commodity, S: Script> {
     //_observedTradingRange is now trading_observations
     inventory: HashMap<C, i32>,
@@ -11,7 +13,7 @@ pub struct TestAgent<C: Commodity, S: Script> {
     trading_observations: HashMap<C, Vec<S>>,
     lookback: i32,
     purse: S,
-    price_beliefs:HashMap<C, S>,
+    price_beliefs:HashMap<C, Range<S>>,
 }
 impl<C: Commodity, S: Script> TestAgent<C, S> {
     pub fn def() -> Self {
@@ -26,7 +28,11 @@ impl<C: Commodity, S: Script> TestAgent<C, S> {
         *self.inventory.get(good).unwrap_or(&0_i32)
     }
     fn get_believed_price(&self, commodity: &C) -> S {
-        *self.price_beliefs.get(commodity). unwrap_or(&S::ZERO)
+        if let Some(range) = self.price_beliefs.get(commodity) {
+            range.max.average(&range.min)
+        } else {
+            S::ONE
+        }
     }    
 }
 
@@ -96,8 +102,18 @@ impl<C: Commodity, S: Script> MarketAgentBasics<C, S> for TestAgent<C, S> {
 
 
 impl<C: Commodity, S: Script> EERGAgentBasics<C, S> for TestAgent<C, S> {
+    fn get_price_beliefs(&mut self, commodity:&C) -> Option<Range<S>> {
+        if let Some(thing) = self.price_beliefs.get(commodity) {
+            Some(*thing)
+        } else {
+            None
+        }
+    }
     fn price_of(&self, commodity: &C) -> S {
         self.get_believed_price(commodity)
+    }
+    fn set_price_beliefs(&mut self, commodity:&C, belief: Range<S>){
+        self.price_beliefs.insert(*commodity, belief);
     }
 }
 

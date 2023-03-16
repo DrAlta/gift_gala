@@ -1,27 +1,69 @@
+use std::ops::{Add};
 //utility functions
 pub type Date = i32;
 
+
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct Range<T: PartialOrd> {
     pub min: T,
     pub max: T
 }
 impl<T: PartialOrd> Range<T> {
-    fn new(min:T, max:T) -> Self {
+    pub fn new(min:T, max:T) -> Self {
         Range{min, max}
+    }
+    pub fn set_max(&mut self, new_max: T) {
+        self.max = new_max;
+    }
+    pub fn set_min(&mut self, new_min: T) {
+        self.min = new_min;
+    }
+}
+impl<T: PartialOrd + Clone> Range<T> {
+
+    fn get_max(&mut self, new_max: T) -> T {
+        self.max.clone()
+    }
+    fn get_min(&mut self, new_max: T) -> T {
+        self.min.clone()
     }
 }
 
 
+impl<T: PartialOrd + Add<T, Output = T> + Copy> Range<T> {
+    fn shift(&mut self, amount: T) {
+        self.max = self.max + amount;
+        self.min = self.min + amount;
+    }
+}
+impl<T: PartialOrd > Range<T> {
 
-#[allow(dead_code)]
-pub fn position_in_range_clamped(value:f32, min:f32, max:f32) -> f32 {
-    let value = (value - min) / (max - min);
-    if value < 0_f32 { return 0_f32 };
-    if value > 1_f32 { return 1_f32 };
-    value
 }
 
+
+
+
 use super::market::Script;
+impl<S:Script> Range<S>{
+    fn shift_towards (&mut self, target: S, amount: S) {
+        let towards_target = target - self.max.average(&self.min);
+        if towards_target > S::ZERO {
+            if towards_target < amount {
+                self.shift(towards_target);
+            } else {
+                self.shift(amount)
+            }
+        } else {
+            if S::ZERO - towards_target < amount {
+                self.shift(towards_target);
+            } else {
+                self.shift(S::ZERO - amount)
+            }
+        }
+    }
+
+}
+
 pub fn range<T: Script>(selfie:&Vec<T>)-> Range<T> {
     let zero = &T::ZERO;
     let mut iter = selfie.into_iter();
@@ -36,4 +78,11 @@ pub fn range<T: Script>(selfie:&Vec<T>)-> Range<T> {
         }
     }
     Range::new(*min, *max)
+}
+#[allow(dead_code)]
+pub fn position_in_range_clamped(value:f32, min:f32, max:f32) -> f32 {
+    let value = (value - min) / (max - min);
+    if value < 0_f32 { return 0_f32 };
+    if value > 1_f32 { return 1_f32 };
+    value
 }

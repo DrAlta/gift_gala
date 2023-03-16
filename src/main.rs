@@ -24,6 +24,7 @@ impl market::Commodity for MyCommodity {
 }
 
 impl market::Script for f32{
+    const ONE: f32 = 1_f32;
     const ZERO: f32 = 0_f32;
     fn average(&self, other: &Self) -> Self {
         (self + other) / 2_f32

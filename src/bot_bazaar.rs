@@ -95,7 +95,7 @@ impl<C: Commodity, S: Script, A: EERGAgent<C, S> + MarketAgentBasics<C, S>, M: M
                             let quantity_traded = seller.quantity.min(buyer.quantity);
                             let clearing_price = seller.price.average(&buyer.price);
         
-                            for i in 0..(quantity_traded ) {
+                            for quantity_actualy_traded in 0..(quantity_traded ) {
                                 if let Ok(_) = trading_agents
                                     .get_mut(buyer.agent_id)
                                     .expect("buyer agent not found")
@@ -109,8 +109,8 @@ impl<C: Commodity, S: Script, A: EERGAgent<C, S> + MarketAgentBasics<C, S>, M: M
                                     .get_mut(seller.agent_id)
                                     .expect("seller agent not found");
                                     if let Ok(_) = seller_agent
-                                        .relinquish_good(good, &i) {
-                                            seller.quantity -= quantity_traded;
+                                        .relinquish_good(good, &quantity_actualy_traded) {
+                                            seller.quantity -= quantity_actualy_traded;
                                             if seller.quantity >= 0 {
                                                 pop_askettes = true;
                                             }
@@ -118,12 +118,34 @@ impl<C: Commodity, S: Script, A: EERGAgent<C, S> + MarketAgentBasics<C, S>, M: M
                                             if buyer.quantity >= 0 {
                                                 pop_bidettes = true;
                                             }
+
+                                            let ask_percent_sold = seller.quantity as f32 / (quantity_actualy_traded as f32);
                                             
+                                            if let Some(mean_price) = market.get_average_historical_price(good,seller_agent.get_lookback()) {
+                                                seller_agent.update_price_beliefs(
+                                                    &ask_percent_sold,
+                                                    good, 
+                                                    &clearing_price,
+                                                    mean_price
+                                                );
+                                            };
                                             let buyer_agent = trading_agents
                                                 .get_mut(buyer.agent_id)
                                                 .expect("buyer agent not found");
 
-                                                buyer_agent.receive_good(good, &i)
+                                                buyer_agent.receive_good(good, &quantity_actualy_traded);
+                                            
+                                                let bid_percent_sold = buyer.quantity as f32 / (quantity_actualy_traded as f32);
+                                            
+                                                if let Some(mean_price) = market.get_average_historical_price(good,buyer_agent.get_lookback()) {
+                                                    buyer_agent.update_price_beliefs(
+                                                        &bid_percent_sold,
+                                                        good, 
+                                                        &clearing_price,
+                                                        mean_price
+                                                    );    
+                                                }
+                                            
                                     }
                                     break
                                 }
