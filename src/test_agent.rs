@@ -86,6 +86,9 @@ impl<C: Commodity, S: Script> MarketAgentBasics<C, S> for TestAgent<C, S> {
     fn excess_inventory(&self, good: &C) -> i32 {
         (self.get_inventory(good) - self.get_ideal_inventory(good)).max(0_i32)
     }
+    fn current_inventory(&self, good: &C) -> i32 {
+        self.get_inventory(good)
+    }
     fn get_lookback(&self) -> i32 {
         self.lookback
     }

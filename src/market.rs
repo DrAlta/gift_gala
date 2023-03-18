@@ -47,13 +47,13 @@ pub trait Market<C: Commodity, S: Script> {
   }
 
 pub trait MarketAgentBasics<C: Commodity, S: Script> {
+    fn current_inventory(&self, good: &C) -> i32;
+    fn excess_inventory(&self, good: &C) -> i32;
+    fn deposit(&mut self, amount: &S) ;
     fn get_lookback(&self) -> i32;
     fn observe_trading_range(&self, good:&C) -> Option<Range<S>>;
-    fn excess_inventory(&self, good: &C) -> i32;
     fn max_inventory_capacity(&self, good:&C) -> i32;
-    fn deposit(&mut self, amount: &S) ;
-    fn withdrawl(&mut self, amount: &S) -> Result<(), &'static str>;
     fn receive_good(&mut self, good: &C, quantity: &i32) ;
     fn relinquish_good(&mut self, good: &C, quantity: &i32) -> Result<(), &'static str>;
-    
+    fn withdrawl(&mut self, amount: &S) -> Result<(), &'static str>;
 }

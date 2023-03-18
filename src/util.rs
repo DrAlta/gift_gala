@@ -12,32 +12,34 @@ impl<T: PartialOrd> Range<T> {
     pub fn new(min:T, max:T) -> Self {
         Range{min, max}
     }
+    #[allow(dead_code)]
     pub fn set_max(&mut self, new_max: T) {
         self.max = new_max;
     }
+    #[allow(dead_code)]
     pub fn set_min(&mut self, new_min: T) {
         self.min = new_min;
     }
 }
 impl<T: PartialOrd + Clone> Range<T> {
 
-    fn get_max(&mut self, new_max: T) -> T {
+    #[allow(dead_code)]
+    fn get_max(&mut self) -> T {
         self.max.clone()
     }
-    fn get_min(&mut self, new_max: T) -> T {
+    #[allow(dead_code)]
+    fn get_min(&mut self) -> T {
         self.min.clone()
     }
 }
 
 
 impl<T: PartialOrd + Add<T, Output = T> + Copy> Range<T> {
+    #[allow(dead_code)]
     fn shift(&mut self, amount: T) {
         self.max = self.max + amount;
         self.min = self.min + amount;
     }
-}
-impl<T: PartialOrd > Range<T> {
-
 }
 
 
@@ -45,6 +47,7 @@ impl<T: PartialOrd > Range<T> {
 
 use super::market::Script;
 impl<S:Script> Range<S>{
+    #[allow(dead_code)]
     fn shift_towards (&mut self, target: S, amount: S) {
         let towards_target = target - self.max.average(&self.min);
         if towards_target > S::ZERO {

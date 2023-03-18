@@ -14,7 +14,8 @@ pub trait EERGAgent<C: Commodity, S: Script> {
     fn determine_sale_quantity<M: Market<C, S>>(&self, bazaar:&M, commodity_id: &C) -> i32;
     fn create_ask<M: Market<C, S>>(&self, bazaar:&M, commodity:&C, limit: i32) -> Option<Ask<C, S>>;
     fn create_bid<M: Market<C, S>>(&self, bazaar:&M, good: &C, limit:i32) -> Option<Bid<C, S>>;
-    fn update_price_beliefs(&mut self, percent_of_order_solf: &f32, commodity:&C, sold_for: &S, mean_price:S);
+    fn price_update_from_bid<M: Market<C, S>>(&mut self, amount_offered: i32, commodity: &C, offered_price: S, sold_for: Vec<S>, quantity_sold: i32, other_agent_sold_this_commodity: &bool);
+    fn price_update_from_ask<M: Market<C, S>>(&mut self, amount_offered: i32, commodity: &C, offered_price: S, sold_for: Vec<S>, quantity_sold: i32, other_agent_sold_this_commodity: &bool);
 }
 impl<T: MarketAgentBasics<C, S>+ EERGAgentBasics<C, S>, C: Commodity, S: Script> EERGAgent<C, S> for T {
     #[allow(dead_code)]
@@ -73,12 +74,25 @@ impl<T: MarketAgentBasics<C, S>+ EERGAgentBasics<C, S>, C: Commodity, S: Script>
         let amount_to_buy = ((1_f32 - favorability) * self.max_inventory_capacity(commodity) as f32) as i32;
 		amount_to_buy.max(1)
 	}
-    fn update_price_beliefs(&mut self, percent_of_order_sold: &f32, commodity:&C, sold_for: &S, mean_price:S) {
-        if percent_of_order_sold < &0.5 {
-            let mut belief = self.get_price_beliefs(commodity).unwrap_or(Range::new(S::ONE, S::ONE));
+    fn price_update_from_ask<M: Market<C, S>>(&mut self, amount_offered: i32, commodity: &C, offered_price: S, sold_for: Vec<S>, quantity_sold: i32, other_agent_sold_this_commodity: &bool) {
+        todo!()
+    }
+    fn price_update_from_bid<M: Market<C, S>>(&mut self, amount_offered: i32, commodity: &C, offered_price: S, sold_for: Vec<S>, quantity_sold: i32, other_agent_sold_this_commodity: &bool) {
+        let mut belief;
+        let percent_of_order_sold = (quantity_sold as f32) / (amount_offered as f32);
+        if percent_of_order_sold < 0.5 {
+            belief = self.get_price_beliefs(commodity).unwrap_or(Range::new(S::ONE, S::ONE));
             belief.max = belief.max / 0.1;
-            self.set_price_beliefs(commodity, belief)
+        } else {
+            belief = self.get_price_beliefs(commodity).unwrap_or(Range::new(S::ONE, S::ONE));
+            belief.max = belief.max / 0.9;
         }
+
+        if (!other_agent_sold_this_commodity) && (self.current_inventory(commodity) < (self.max_inventory_capacity(commodity))) {
+            todo!()
+        }
+
+        self.set_price_beliefs(commodity, belief);
     }
 
 }
