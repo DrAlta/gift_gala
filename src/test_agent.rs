@@ -1,8 +1,10 @@
 use std::ops::Add;
 use std::collections::HashMap;
 
+use super::Script;
+
 use super::util::{range, Range};
-use super::market::{Commodity, Market, MarketAgentBasics, Script};
+use super::market::{Commodity, Market, MarketAgentBasics};
 use super::eerg::EERGAgentBasics;
 
 
@@ -19,13 +21,13 @@ impl<C: Commodity, S: Script> TestAgent<C, S> {
     pub fn def() -> Self {
         TestAgent { inventory: HashMap::new(), ideal_inventory: HashMap::new(), trading_observations: HashMap::new(), lookback: 15, purse: S::ZERO, price_beliefs: HashMap::new() }
     }
-    pub fn get_ideal_inventory(&self, good: &C) -> i32 {
-        *self.ideal_inventory.get(good).unwrap_or(&0_i32)
+    pub fn get_ideal_inventory(&self, commodity: &C) -> i32 {
+        *self.ideal_inventory.get(commodity).unwrap_or(&0_i32)
     }
 
 
-    pub fn get_inventory(&self, good: &C) -> i32 {
-        *self.inventory.get(good).unwrap_or(&0_i32)
+    pub fn get_inventory(&self, commodity: &C) -> i32 {
+        *self.inventory.get(commodity).unwrap_or(&0_i32)
     }
     fn get_believed_price(&self, commodity: &C) -> S {
         if let Some(range) = self.price_beliefs.get(commodity) {
@@ -75,37 +77,37 @@ impl<C: Commodity, S: Script> MarketAgentBasics<C, S> for TestAgent<C, S> {
         }
 
     }
-    fn receive_good(&mut self, good: &C, quantity: &i32) {
-        insert_or_add(&mut self.inventory, *good, *quantity);
+    fn receive_good(&mut self, commodity: &C, quantity: &i32) {
+        insert_or_add(&mut self.inventory, *commodity, *quantity);
     }
-    fn relinquish_good(&mut self, good: &C, quantity: &i32) -> Result<(), &'static str> {
-        insert_or_add(&mut self.inventory, *good, -*quantity);
+    fn relinquish_good(&mut self, commodity: &C, quantity: &i32) -> Result<(), &'static str> {
+        insert_or_add(&mut self.inventory, *commodity, -*quantity);
         Ok(())
     }
 
-    fn excess_inventory(&self, good: &C) -> i32 {
-        (self.get_inventory(good) - self.get_ideal_inventory(good)).max(0_i32)
+    fn excess_inventory(&self, commodity: &C) -> i32 {
+        (self.get_inventory(commodity) - self.get_ideal_inventory(commodity)).max(0_i32)
     }
-    fn current_inventory(&self, good: &C) -> i32 {
-        self.get_inventory(good)
+    fn current_inventory(&self, commodity: &C) -> i32 {
+        self.get_inventory(commodity)
     }
     fn get_lookback(&self) -> i32 {
         self.lookback
     }
     /// bazarrbot returns 0 if he didn't have any
-    fn max_inventory_capacity(&self, good:&C) -> i32 {
-        (self.get_ideal_inventory(good) - self.get_inventory(good)).max(0_i32)
+    fn max_inventory_capacity(&self, commodity:&C) -> i32 {
+        (self.get_ideal_inventory(commodity) - self.get_inventory(commodity)).max(0_i32)
 	}
-    fn observe_trading_range(&self, good:&C) -> Option<Range<S>> {
+    fn observe_trading_range(&self, commodity:&C) -> Option<Range<S>> {
         
-        Some(range(self.trading_observations.get(good)?))
+        Some(range(self.trading_observations.get(commodity)?))
     }
 
 }
 
 
 impl<C: Commodity, S: Script> EERGAgentBasics<C, S> for TestAgent<C, S> {
-    fn get_price_beliefs(&mut self, commodity:&C) -> Option<Range<S>> {
+    fn get_price_beliefs(&self, commodity:&C) -> Option<Range<S>> {
         if let Some(thing) = self.price_beliefs.get(commodity) {
             Some(*thing)
         } else {
