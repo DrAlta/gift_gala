@@ -5,29 +5,29 @@ pub trait Commodity: std::fmt::Debug + std::hash::Hash + Eq + Copy {
 }
 #[derive(Debug)]
 pub struct Ask<C: Commodity, S: Script> {
-    pub quantity: i32,
+    pub amount_put_up: i32,
     pub commodity: C,
-    pub price: S
+    pub trade_price: S
 }
 impl<C: Commodity, S: Script> Ask<C, S> {
     pub fn new(commodity: C, quantity: i32, price: S) -> Self {
-        Ask{quantity, commodity, price}
+        Ask{amount_put_up: quantity, commodity, trade_price: price}
     }
     pub fn strip(&self)-> (C, i32, S) {
-        (self.commodity.clone(), self.quantity.clone(), self.price.clone())
+        (self.commodity.clone(), self.amount_put_up.clone(), self.trade_price.clone())
     }
 }
 pub struct Bid<C: Commodity, S: Script> {
-    pub quantity: i32,
+    pub amount_wanted: i32,
     pub commodity: C,
-    pub price: S
+    pub value_of_acquiring: S
 }
 impl<C: Commodity, S: Script> Bid<C, S> {
     pub fn new(commodity: C, quantity: i32, price: S) -> Self {
-        Bid{quantity, commodity, price}
+        Bid{amount_wanted: quantity, commodity, value_of_acquiring: price}
     }
     pub fn strip(&self)-> (C, i32, S) {
-        (self.commodity.clone(), self.quantity.clone(), self.price.clone())
+        (self.commodity.clone(), self.amount_wanted.clone(), self.value_of_acquiring.clone())
     }
 }
 

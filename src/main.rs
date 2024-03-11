@@ -2,10 +2,11 @@ mod market;
 mod test_agent;
 mod test_market;
 mod eerg;
+pub use eerg::{AskReply, BidReply, EERGAgent, EERGAgentBasics};
+//mod eerg;
 mod util;
 mod history_log;
 use test_agent::TestAgent;
-use eerg::EERGAgent as nope;
 
 use crate::market::{Commodity, Market};
 
@@ -28,6 +29,7 @@ impl market::Commodity for MyCommodity {
 
 impl Script for f32{
     const ONE: f32 = 1_f32;
+    const TWO: f32 = 2_f32;
     const ZERO: f32 = 0_f32;
     fn average(&self, other: &Self) -> Self {
         (self + other) / 2_f32

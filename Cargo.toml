@@ -6,3 +6,4 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+qol = { version = "0.1.7", git = "https://github.com/DrAlta/rust_quality_of_life.git"}

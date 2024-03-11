@@ -5,3 +5,11 @@ version = 3
 [[package]]
 name = "gift_gala"
 version = "0.1.0"
+dependencies = [
+ "qol",
+]
+
+[[package]]
+name = "qol"
+version = "0.1.7"
+source = "git+https://github.com/DrAlta/rust_quality_of_life.git#5c8cffd56550f9eea693ffe8bfd97e230f19cfcf"
