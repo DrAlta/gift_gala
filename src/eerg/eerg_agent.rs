@@ -2,24 +2,8 @@ use std::{cmp::Ordering, ops::{Add, Div, Mul, Sub}};
 
 use qol::logy;
 
-use crate::{market::{Ask, Bid, Commodity, Market, MarketAgentBasics}, util::Range, EERGAgentBasics, Script};
-
-#[derive(Debug)]
-pub struct AskReply<S: Script> {
-    //pub amount_offered: i32,
-    //pub commodity: C,
-    //pub offered_price: S,
-    pub i_sold_them_for: S,
-    pub quantity_sold: i32,
-}
-#[derive(Debug)]
-pub struct BidReply<S: Script> {
-    //pub amount_offered: i32,
-    //pub commodity: C,
-    //pub offered_price: S,
-    pub sold_to_me_for: S, 
-    pub quantity_sold: i32,
-}
+use crate::{market::{Ask, BaseValues, Bid, Commodity, Market, MarketAgentBasics}, EERGAgentBasics, Float, Script};
+use super::{AskReply, BidReply};
 
 
 pub trait EERGAgent<C: Commodity, S: Script>
@@ -34,7 +18,7 @@ where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<O
     fn price_update_from_asks<M: Market<C, S>>(
         &mut self, 
         amount_put_up: i32,
-        trade_price: S,
+        parting_price: S,
         replies: Vec<AskReply<S>>,
         commodity: &C, 
         market: &M,
@@ -53,11 +37,6 @@ where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<O
     );
 }
 
-pub trait BaseValues<C: Commodity, S: std::cmp::PartialOrd>
-{
-    fn get_base_value(&self, commodity: &C) -> S;
-    fn get_base_value_range(&self, commodity: &C) -> Range<S>;
-}
 impl<T: MarketAgentBasics<C, S>+ EERGAgentBasics<C, S>, C: Commodity, S: Script> EERGAgent<C, S> for T
 where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<Output = S>,
 Self: BaseValues<C, S>
@@ -120,15 +99,40 @@ Self: BaseValues<C, S>
 	}
     fn price_update_from_asks<M: Market<C, S>>(
         &mut self, 
-        amount_wanted: i32,
-        offered_price: S,
-        replies: Vec<AskReply<S>>, 
+        amount_put_up: i32,
+        parting_price: S,
+        replies: Vec<AskReply<S>>,
         commodity: &C, 
         market: &M,
         supply_cmp_demand: &std::cmp::Ordering,
-        total_ammount_sold_this_round: i32,
+        total_ammount_sold_this_round: i32
     ) {
-        todo!("{amount_wanted}{offered_price:?}{replies:?}{commodity:?}{market:?}{supply_cmp_demand:?},{total_ammount_sold_this_round}")
+        let total_i_sold: i32 = replies.iter().map(|x| x.quantity_sold).sum();
+        let weight = (amount_put_up - total_i_sold) as Float / amount_put_up as Float;
+
+        let sum_of_prices: S = replies.iter().fold(S::ZERO, |accum, x| &accum + &x.i_sold_them_for);
+        let mean_price = sum_of_prices / replies.len() as Float;
+
+        let displacement = mean_price  * weight;
+
+        let market_share = total_i_sold as Float / total_ammount_sold_this_round as Float;
+
+        let mut belief = self.get_price_beliefs(commodity).unwrap_or(self.get_base_value_range(commodity));
+
+        if replies.is_empty() {
+            belief.shift_down(displacement * (1.0 / 6.0));
+        } else if market_share < 0.75 {
+            belief.shift_down(displacement * (1.0 / 7.0));
+        } else if parting_price < mean_price {
+            let overbid = mean_price - parting_price;
+            belief.shift_up(overbid * weight * 1.2);
+        } else if let Some(average_historical_price) = market.get_average_historical_price(commodity, self.get_lookback()){
+            if supply_cmp_demand == &Ordering::Less {
+                belief.shift_up(average_historical_price * 0.2);
+            } else {
+                belief.shift_down(average_historical_price * 0.2);
+            }
+        }
         /*
         let market_share = (quantity_sold as f32) / (total_ammount_of_commodit_sold_this_round as f32);
         let weight = (quantity_sold as f32) / (amount_put_up_for_sell as f32);
@@ -157,9 +161,9 @@ Self: BaseValues<C, S>
     }
     fn price_update_from_bids<M: Market<C, S>>(
         &mut self, 
-        amount_put_up: i32,
-        offered_price: S,
-        replies: Vec<BidReply<S>>,
+        amount_wanted: i32,
+        value_of_acquiring: S,
+        replies: Vec<BidReply<S>>, 
         commodity: &C, 
         market: &M,
         supply_cmp_demand: &std::cmp::Ordering,
@@ -168,12 +172,12 @@ Self: BaseValues<C, S>
         // calculating the values used
         let total_sold: i32 = replies
             .iter()
-            .map(|x| x.quantity_sold)
+            .map(|x| x.quantity_aquired)
             .sum();
-        let percent_of_bid_fulfilled = amount_put_up as f64 / total_sold as f64;
+        let percent_of_bid_fulfilled = amount_wanted as Float / total_sold as Float;
         let mut belief = self.get_price_beliefs(commodity).unwrap_or(self.get_base_value_range(commodity));
-        //let market_share = total_sold as f64 / total_ammount_sold_this_round as f64;
-        let percent_of_inventory = self.current_inventory(commodity) as f64 / self.max_inventory_capacity(commodity) as f64;
+        //let market_share = total_sold as Float / total_ammount_sold_this_round as Float;
+        let percent_of_inventory = self.current_inventory(commodity) as Float / self.max_inventory_capacity(commodity) as Float;
 
         let mean_selling_price_maybe = if replies.is_empty() {
             None
@@ -199,28 +203,28 @@ Self: BaseValues<C, S>
         if total_sold != total_ammount_sold_this_round && percent_of_inventory < 0.25 {
             if let Some(mean_selling_price) = mean_selling_price_maybe {
                 let displacement = (mean_selling_price - belief.mean()).abs();
-                belief.shift(displacement);
+                belief.shift_up(displacement);
             }
         } else if
             if let Some(mean_selling_price) = mean_selling_price_maybe {
-                offered_price > mean_selling_price 
+                value_of_acquiring > mean_selling_price 
             } else {
                 false
             } 
         // elseif offer price > trade price
         {
-            let overbid = offered_price - mean_selling_price_maybe.expect("we aready tested that mean_selling_price_maybe was something when decide to go down");
-            belief.shift(S::ZERO - (overbid * 1.1));
+            let overbid = value_of_acquiring - mean_selling_price_maybe.expect("we aready tested that mean_selling_price_maybe was something when decide to go down");
+            belief.shift_down(overbid * 1.1);
         } else if supply_cmp_demand == &Ordering::Greater 
             && if let Some(average_historical_price) = market.get_average_historical_price(commodity, self.get_lookback()) {
-                    offered_price > average_historical_price 
+                    value_of_acquiring > average_historical_price 
                 } else {
                     false
                 }
         // elseif supply > demand and offer > historical mean price
         {
-            let overbid = offered_price - market.get_average_historical_price(commodity, self.get_lookback()).expect("we aready tested that mean_selling_price_maybe was something when decide to go down");
-            belief.shift(S::ZERO - (overbid * 1.1));
+            let overbid = value_of_acquiring - market.get_average_historical_price(commodity, self.get_lookback()).expect("we aready tested that mean_selling_price_maybe was something when decide to go down");
+            belief.shift_down(overbid * 1.1);
         } else 
         // elseif demand > supply
         //      then
@@ -230,9 +234,9 @@ Self: BaseValues<C, S>
         {
             if let Some(average_historical_price) = market.get_average_historical_price(commodity, self.get_lookback()){
                 if supply_cmp_demand != &Ordering::Less {
-                    belief.shift(average_historical_price * 0.2);
+                    belief.shift_up(average_historical_price * 0.2);
                 } else {
-                    belief.shift(S::ZERO - (average_historical_price * 0.2));
+                    belief.shift_down(average_historical_price * 0.2);
                 }
 
             }

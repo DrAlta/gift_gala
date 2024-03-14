@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::{Add, Sub};
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct Range<T: PartialOrd> {
     pub min: T,
@@ -30,9 +30,15 @@ impl<T: PartialOrd + Clone> Range<T> {
 }
 
 
-impl<T: PartialOrd + Add<T, Output = T> + Copy> Range<T> {
+impl<T: PartialOrd + Sub<T, Output = T> + Copy> Range<T> {
     #[allow(dead_code)]
-    pub fn shift(&mut self, amount: T) {
+    pub fn shift_down(&mut self, amount: T) {
+        self.max = self.max - amount;
+        self.min = self.min - amount;
+    }
+}
+impl<T: PartialOrd + Add<T, Output = T> + Copy> Range<T> {
+        pub fn shift_up(&mut self, amount: T) {
         self.max = self.max + amount;
         self.min = self.min + amount;
     }
@@ -64,15 +70,15 @@ impl<S:Script> Range<S>{
         let towards_target = target - self.max.average(&self.min);
         if towards_target > S::ZERO {
             if towards_target < amount {
-                self.shift(towards_target);
+                self.shift_up(towards_target);
             } else {
-                self.shift(amount)
+                self.shift_up(amount)
             }
         } else {
             if S::ZERO - towards_target < amount {
-                self.shift(towards_target);
+                self.shift_up(towards_target);
             } else {
-                self.shift(S::ZERO - amount)
+                self.shift_down(amount)
             }
         }
     }

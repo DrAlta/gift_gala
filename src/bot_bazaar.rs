@@ -258,7 +258,7 @@ where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<O
                         bidette.replies.push(
                             BidReply { 
                                 sold_to_me_for: clearing_price.clone(), 
-                                quantity_sold: quantity_actualy_traded 
+                                quantity_aquired: quantity_actualy_traded 
                             }
                         );
                             
@@ -267,11 +267,11 @@ where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<O
                 },
                 (Some(Bidette{value_of_acquiring, quantity,..}), None) => {
                     max_unmatched_bid = Self::max_option(max_unmatched_bid, Some(*value_of_acquiring));
-                    total_unmet_want += quantity.clone();                                      
+                    total_unbought += quantity.clone();                                      
                 },
                 (None, Some(Askette{trade_price, quantity, ..})) => {
                     max_unmatched_ask = Self::max_option(max_unmatched_ask, Some(*trade_price));
-                    total_unbought += quantity.clone();
+                    total_unmet_want += quantity.clone();
                 },
                 _ => break
             }

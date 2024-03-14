@@ -1,10 +1,10 @@
 use std::ops::{Add, Div, Mul, Sub};
 use std::collections::HashMap;
 
-use crate::{BaseValues, EERGAgentBasics, Script};
+use crate::{EERGAgentBasics, Script};
 
 use crate::util::{range, Range};
-use crate::market::{Commodity, Market, MarketAgentBasics};
+use crate::market::{BaseValues, Commodity, Market, MarketAgentBasics};
 
 
 pub struct TestAgent<C: Commodity, S: Script> {

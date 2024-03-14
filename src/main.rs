@@ -1,19 +1,22 @@
-mod market;
+pub mod market;
+use market::{Commodity, Market};
 mod test_agent;
 mod test_market;
+
 mod eerg;
-pub use eerg::{AskReply, BaseValues, BidReply, EERGAgent, EERGAgentBasics};
+pub use eerg::{AskReply, BidReply, EERGAgent, EERGAgentBasics};
 //mod eerg;
 mod util;
 mod history_log;
 use test_agent::TestAgent;
 
-use crate::market::{Commodity, Market};
 
 mod bot_bazaar;
 
 mod script;
 pub use script::Script;
+
+type Float = f32;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 #[allow(dead_code)]
@@ -27,29 +30,29 @@ impl market::Commodity for MyCommodity {
     }
 }
 
-impl Script for f32{
-    const ONE: f32 = 1_f32;
-    const TWO: f32 = 2_f32;
-    const ZERO: f32 = 0_f32;
+impl Script for Float{
+    const ONE: Float = 1.0;
+    const TWO: Float = 2.0;
+    const ZERO: Float = 0.0;
     fn average(&self, other: &Self) -> Self {
-        (self + other) / 2_f32
+        (self + other) / 2.0
     }
-    fn position_in_range(&self, min:&Self, max:&Self) -> f32 {
+    fn position_in_range(&self, min:&Self, max:&Self) -> Float {
         (self - min) / (max - min)
     }
     fn difference(&self, other: &Self) -> Self {
         (self - other).abs()
     }
     fn abs(&self) -> Self {
-        f32::abs(*self)
+        Float::abs(*self)
     }
 }
 
 fn main() {
-    let mut market = test_market::TestMarket::<MyCommodity, f32>::def();
-    market.push_price_history(MyCommodity::Stuff, 1_f32, 1);
-    market.push_max_unmatched_bids_history(MyCommodity::Stuff, 1_f32, 2);
-    let agent = TestAgent::<MyCommodity, f32>::def();
+    let mut market = test_market::TestMarket::<MyCommodity, Float>::def();
+    market.push_price_history(MyCommodity::Stuff, 1.0, 1);
+    market.push_max_unmatched_bids_history(MyCommodity::Stuff, 1.0, 2);
+    let agent = TestAgent::<MyCommodity, Float>::def();
 
     println!("{:?}", agent.determine_sale_quantity(&market, &MyCommodity::Things));
     println!("{:?}", agent.determine_purchase_quantity(&market, &MyCommodity::Things));
