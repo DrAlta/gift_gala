@@ -9,5 +9,6 @@ pub trait Script: std::fmt::Debug + Copy + PartialOrd + Add<Output = Self> + Div
     fn position_in_range(&self, min:&Self, max:&Self) -> f32;
     fn average(&self, other: &Self) -> Self;
     fn difference(&self, other: &Self) -> Self;
+    fn abs(&self) -> Self;
     
 }

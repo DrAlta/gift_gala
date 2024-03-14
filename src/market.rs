@@ -32,7 +32,7 @@ impl<C: Commodity, S: Script> Bid<C, S> {
 }
 
 
-pub trait Market<C: Commodity, S: Script> {
+pub trait Market<C: Commodity, S: Script>: std::fmt::Debug  {
     fn get_average_historical_price(&self, commodity: &C, depth: i32) -> Option<S>;
     fn get_average_historical_value(&self, commodity: &C, depth: i32) -> S;
     fn push_price_history(&mut self, commodity: C, price: S, date: Date) ;

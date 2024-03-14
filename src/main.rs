@@ -2,7 +2,7 @@ mod market;
 mod test_agent;
 mod test_market;
 mod eerg;
-pub use eerg::{AskReply, BidReply, EERGAgent, EERGAgentBasics};
+pub use eerg::{AskReply, BaseValues, BidReply, EERGAgent, EERGAgentBasics};
 //mod eerg;
 mod util;
 mod history_log;
@@ -39,6 +39,9 @@ impl Script for f32{
     }
     fn difference(&self, other: &Self) -> Self {
         (self - other).abs()
+    }
+    fn abs(&self) -> Self {
+        f32::abs(*self)
     }
 }
 

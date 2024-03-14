@@ -56,6 +56,9 @@ impl<S:Script> Range<S>{
             self.min = new_min;
         }
     }
+    pub fn mean(&self) -> S {
+        S::average(&self.max, &self.min)
+    }
     #[allow(dead_code)]
     pub fn shift_towards (&mut self, target: S, amount: S) {
         let towards_target = target - self.max.average(&self.min);

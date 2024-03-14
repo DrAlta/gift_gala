@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::{Add, Div, Mul, Sub};
-use qol::{AddOrInsert, PushOrInsert};
 
 use super::util::Date;
 
@@ -23,9 +22,11 @@ impl<S: Script> Askette<S>  {
     pub fn new(amount_put_up_for_sell: i32, trade_price: S) -> Self {
         Self { quantity: amount_put_up_for_sell.clone(), amount_put_up_for_sell, trade_price, replies: Vec::new() }
     }
+    #[allow(dead_code)]
     pub fn trade_price(&self) -> &S {
         &self.trade_price
     }
+    #[allow(dead_code)]
     pub fn amount_put_up_for_sell(&self) -> i32 {
         self.amount_put_up_for_sell
     }
@@ -41,9 +42,11 @@ impl<S: Script> Bidette<S>  {
     pub fn new(amount_wanted: i32, value_of_acquiring: S) -> Self {
         Self { quantity: amount_wanted.clone(), amount_wanted, value_of_acquiring, replies: Vec::new() }
     }
+    #[allow(dead_code)]
     pub fn amount_wanted(&self) -> i32 {
         self.amount_wanted
     }
+    #[allow(dead_code)]
     pub fn value_of_acquiring(&self) -> &S {
         &self.value_of_acquiring
     }
@@ -149,14 +152,14 @@ where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<O
         date: &Date
     ) {
         // we need to go through the bids in order so We'll creat Vec of the AgentIDs in tha correct order
-        let mut bid_queue: Vec<&AgentID> = bidettes.keys().collect();
+        let mut bid_queue: Vec<AgentID> = bidettes.keys().map(|x| x.clone()).collect();
 
         bid_queue.sort_unstable_by(
             |a, b| 
                 bidettes.get(a).unwrap().value_of_acquiring.partial_cmp(&bidettes.get(b).unwrap().value_of_acquiring).unwrap_or(std::cmp::Ordering::Equal)
         );
         // we need to go through the asks in order so We'll creat Vec of the AgentIDs in tha correct order
-        let mut ask_queue: Vec<&AgentID> = askettes.keys().collect();
+        let mut ask_queue: Vec<AgentID> = askettes.keys().map(|x| x.clone()).collect();
 
         ask_queue.sort_unstable_by(
             |a, b|
@@ -203,7 +206,7 @@ where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<O
             let &buyer_id = bid_queue.last().unwrap();
             let &seller_id = ask_queue.last().unwrap();
 
-            match (bidettes.get_mut(buyer_id), askettes.get_mut(seller_id)) {
+            match (bidettes.get_mut(&buyer_id), askettes.get_mut(&seller_id)) {
                 (Some(bidette), Some(askette)) => {
                     let quantity_traded = askette.quantity.min(bidette.quantity);
                     let clearing_price = askette.trade_price.average(&bidette.value_of_acquiring);
@@ -272,13 +275,15 @@ where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<O
                 },
                 _ => break
             }
+             
+            assert!(total_unmet_want ==0 || total_unbought == 0)
         }
         let supply_cmp_demand: std::cmp::Ordering = match (max_unmatched_ask, max_unmatched_bid) {
             (Some(_), None) => std::cmp::Ordering::Greater,
             (None, Some(_)) => std::cmp::Ordering::Less,
             _ => std::cmp::Ordering::Equal
         };
-        for (seller_id, Askette { amount_put_up_for_sell, quantity, trade_price, replies }) in askettes{
+        for (seller_id, Askette { amount_put_up_for_sell, quantity: _, trade_price, replies }) in askettes{
             trading_agents.get_mut(seller_id).unwrap()
                 .price_update_from_asks::<M>(
                     amount_put_up_for_sell,
@@ -291,7 +296,7 @@ where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<O
                 )
             ;
         }
-        for (buyer_id, Bidette { amount_wanted, quantity, value_of_acquiring, replies }) in bidettes{
+        for (buyer_id, Bidette { amount_wanted, quantity: _, value_of_acquiring, replies }) in bidettes{
             trading_agents.get_mut(buyer_id).unwrap()
                 .price_update_from_bids::<M>(
                     amount_wanted,

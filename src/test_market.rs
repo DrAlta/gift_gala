@@ -3,6 +3,8 @@ use super::history_log::HistoryLog;
 use super::Script;
 use super::market::{Commodity, Market};
 use super::util::Date;
+
+#[derive(Debug)]
 pub struct TestMarket<C: Commodity, S: Script> {
     price_history: HistoryLog<C, S>,
     /// log of the max bid for days what there are no asks but there where bids 

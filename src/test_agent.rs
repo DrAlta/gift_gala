@@ -1,11 +1,10 @@
-use std::ops::Add;
+use std::ops::{Add, Div, Mul, Sub};
 use std::collections::HashMap;
 
-use crate::Script;
+use crate::{BaseValues, EERGAgentBasics, Script};
 
 use crate::util::{range, Range};
 use crate::market::{Commodity, Market, MarketAgentBasics};
-use crate::EERGAgentBasics;
 
 
 pub struct TestAgent<C: Commodity, S: Script> {
@@ -17,6 +16,21 @@ pub struct TestAgent<C: Commodity, S: Script> {
     purse: S,
     price_beliefs:HashMap<C, Range<S>>,
 }
+
+
+impl<C: Commodity, S: Script> BaseValues<C, S> for TestAgent<C, S>
+where for<'a> &'a S: Add<Output = S> + Div<Output = S> + Mul<Output = S> + Sub<Output = S>
+{
+    fn get_base_value(&self, _commodity: &C) -> S {
+        S::ONE
+    }
+    
+    
+    fn get_base_value_range(&self, _commodity: &C) -> Range<S> {
+        Range::new(S::ONE, S::TWO)
+    }
+}
+
 impl<C: Commodity, S: Script> TestAgent<C, S> {
     pub fn def() -> Self {
         TestAgent { inventory: HashMap::new(), ideal_inventory: HashMap::new(), trading_observations: HashMap::new(), lookback: 15, purse: S::ZERO, price_beliefs: HashMap::new() }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use super::util::Date;
+#[derive(Debug)]
 pub struct HistoryLog<K, T> {
     values: HashMap<K, Vec<T>>,
     dates: HashMap<K, Vec<Date>>,
